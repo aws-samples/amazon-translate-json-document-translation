@@ -16,8 +16,7 @@ Important: this application uses Amazon Translate and there are costs associated
 
 
 ## Solution Architecture
-![](solution.jpg)
-<img src="solution.png" width="800" height="500" />
+<img src="solution.png" width="800" height="378" />
 
 ## Building and Deploying the application
 
