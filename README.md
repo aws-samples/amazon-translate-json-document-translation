@@ -36,7 +36,7 @@ Download or clone this repository.
 To create a new bucket for deployment artifacts, run `create-bucket.sh`.
 
     $ ./create-bucket.sh
-    make_bucket: lambda-artifacts-a5e491dbb5b22e0d
+    make_bucket: lambda-artifacts-a1b2c3d4e5c6
 
 ### Deploy
 
