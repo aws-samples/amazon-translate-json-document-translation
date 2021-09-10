@@ -7,17 +7,17 @@ This project contains source code and supporting files for a serverless pipeline
 - translate_json - Code for the application's Lambda functions.
 - translate-json-template.yaml - A template that defines the application's AWS resources.
 
-The application uses several AWS resources, including AWS Lambda functions, AWS Step Functions and Amazon Simple Notification Service (SNS). These resources are defined in the `translate-json-template.yaml` file in this project. 
+The application uses several AWS resources, including AWS Lambda functions, Amazon Simple Storage Service and Amazon EventBridge Rules. These resources are defined in the `translate-json-template.yaml` file in this project. 
 
 Important: this application uses Amazon Translate and there are costs associated with this service after the Free Tier usage - please see the   [Amazon Translate pricing page](https://aws.amazon.com/translate/pricing/) for details.
 
-<!--
 ### Reference
 [Translating JSON documents with Amazon Translate](https://aws.amazon.com/blogs/machine-learning/translating-json-documents-using-amazon-translate/) 
--->
+
 
 ## Solution Architecture
-<img src="solution.png" width="800" height="378" />
+![](solution.jpg)
+<img src="solution.png" />
 
 ## Building and Deploying the application
 
@@ -37,7 +37,7 @@ Download or clone this repository.
 To create a new bucket for deployment artifacts, run `create-bucket.sh`.
 
     $ ./create-bucket.sh
-    make_bucket: lambda-artifacts-a1b2c3d4e5c6
+    make_bucket: lambda-artifacts-a5e491dbb5b22e0d
 
 ### Deploy
 

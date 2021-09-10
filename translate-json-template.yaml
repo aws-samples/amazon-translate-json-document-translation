@@ -21,11 +21,6 @@ Resources:
     Properties:
         BucketName: !Join ['', ['translate-bucket-', !Select [2, !Split [/, !Ref AWS::StackId ]]]]
 
-  AmazonTranslateSnsTopic:
-    Type: 'AWS::SNS::Topic'
-    Properties:
-      TopicName: !Join ['', ['translate-json-jobstatus-topic', !Select [2, !Split [/, !Ref AWS::StackId ]]]]
-
   S3FolderCreationPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -108,7 +103,7 @@ Resources:
             Resource: ['*']
       ManagedPolicyName: S3FileTriggerEventProcessorPolicy
     
-  TranslateJsonJobPollerPolicy:
+  TranslateJsonJobEventProcessorPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       PolicyDocument:
@@ -118,14 +113,6 @@ Resources:
             Action: 
               - translate:DescribeTextTranslationJob
             Resource: ['*'] 
-      ManagedPolicyName: TranslateJsonJobPollerPolicy
-
-  TranslateJsonJobSNSEventProcessorPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
           - Effect: Allow
             Action:
             - s3:ListBucket
@@ -146,7 +133,7 @@ Resources:
               - 's3:PutObjectAcl'
               - 's3:DeleteObject'
             Resource: !Join ['', ['arn:aws:s3:::translate-bucket-', !Select [2, !Split [/, !Ref AWS::StackId ]], /*]]
-      ManagedPolicyName: TranslateJsonJobSNSEventProcessorPolicy
+      ManagedPolicyName: TranslateJsonJobEventProcessorPolicy
 
   S3FolderCreate:
     Type: AWS::Serverless::Function
@@ -213,11 +200,11 @@ Resources:
                   Value: input/
                 - Name: suffix
                   Value: !Ref TriggerFileName
-  TranslateJsonJobSNSEventProcessor:
+  TranslateJsonJobEventProcessor:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: translate_json/
-      Handler: sns_event_handler.lambda_handler
+      Handler: translate_job_event_handler.lambda_handler
       Runtime: python3.8
       Description: Python function to process the Translate Job completion SNS event
       MemorySize: 1024
@@ -230,57 +217,21 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - AWSLambda_ReadOnlyAccess
         - AWSXrayWriteOnlyAccess
-        - !Ref TranslateJsonJobSNSEventProcessorPolicy
+        - !Ref TranslateJsonJobEventProcessorPolicy
       Tracing: Active
       Events:
-        SNS1:
-          Type: SNS
+        EventBridgeRule1:
+          Type: EventBridgeRule
           Properties:
-            Topic:
-              Ref: AmazonTranslateSnsTopic
+            Pattern:
+              source:
+                - aws.translate
+              detail-type:
+                - Translate TextTranslationJob State Change
+            Target:
+              Id: !Ref TranslateJsonJobEventProcessor
   
-  TranslateJsonJobPoller:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: translate_json/
-      Handler: translate_job_poller.lambda_handler
-      Runtime: python3.8
-      Description: Python function to check the status of the Translate Job
-      MemorySize: 512
-      Timeout: 60
-      # Function's execution role
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambda_ReadOnlyAccess
-        - AWSXrayWriteOnlyAccess
-        - !Ref TranslateJsonJobPollerPolicy
-      Tracing: Active
-              
-  JobPollerStateMachine:
-    Type: AWS::Serverless::StateMachine 
-    Properties:
-      DefinitionUri: job-poller-asl.json
-      DefinitionSubstitutions:
-        JobStatusCheckerArn: !GetAtt TranslateJsonJobPoller.Arn
-        JobStatusUpdateTopicArn: !Ref AmazonTranslateSnsTopic
-      Events:
-        TriggerSource:
-          Type: EventBridgeRule 
-          Properties:
-            Pattern:            
-              detail:
-                eventSource:
-                  - translate.amazonaws.com
-                eventName:
-                  - StartTextTranslationJob
-                requestParameters:
-                  jobName: 
-                    - prefix: TranslateJob-json
-      Policies: 
-        - LambdaInvokePolicy:
-            FunctionName: !Ref TranslateJsonJobPoller
-        - SNSPublishMessagePolicy:
-            TopicName: !Join ['', ['translate-json-jobstatus-topic', !Select [2, !Split [/, !Ref AWS::StackId ]]]]
+  
 Outputs:
   TranslateS3Bucket:
     Description: 'Amazon S3 bucket for document processing'
@@ -288,9 +239,6 @@ Outputs:
   S3FileEventProcessor:
     Description: 'AWS Lambda function triggered when the JSON document is uploaded'
     Value: !Ref S3FileEventProcessor
-  TranslateJsonJobPoller:
-    Description: 'AWS Lambda function triggered by the Step Function to poll the status of the Amazon Translate job'
-    Value: !Ref TranslateJsonJobPoller
-  TranslateJsonJobSNSEventProcessor:
+  TranslateJsonJobEventProcessor:
     Description: 'AWS Lambda function triggered on the completion of the Amazon Translate Job and it generates the translated document'
-    Value: !Ref TranslateJsonJobSNSEventProcessor
+    Value: !Ref TranslateJsonJobEventProcessor
